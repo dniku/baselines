@@ -15,7 +15,7 @@ class PolicyWithValue(object):
     Encapsulates fields and methods for RL policy and value function estimation with shared parameters
     """
 
-    def __init__(self, env, observations, latent, estimate_q=False, vf_latent=None, sess=None, **tensors):
+    def __init__(self, env, observations, latent, estimate_q=False, vf_latent=None, sess=None, extra=None, **tensors):
         """
         Parameters:
         ----------
@@ -63,6 +63,8 @@ class PolicyWithValue(object):
             self.vf = fc(vf_latent, 'vf', 1)
             self.vf = self.vf[:,0]
 
+        self.extra = tf.constant([]) if extra is None else extra
+
     def _evaluate(self, variables, observation, **extra_feed):
         sess = self.sess
         feed_dict = {self.X: adjust_shape(self.X, observation)}
@@ -90,10 +92,10 @@ class PolicyWithValue(object):
         (action, value estimate, next state, negative log likelihood of the action under current policy parameters) tuple
         """
 
-        a, v, state, neglogp = self._evaluate([self.action, self.vf, self.state, self.neglogp], observation, **extra_feed)
+        a, v, state, neglogp, extra = self._evaluate([self.action, self.vf, self.state, self.neglogp, self.extra], observation, **extra_feed)
         if state.size == 0:
             state = None
-        return a, v, state, neglogp
+        return a, v, state, neglogp, extra
 
     def value(self, ob, *args, **kwargs):
         """
@@ -139,22 +141,20 @@ def build_policy(env, policy_network, value_network=None,  normalize_observation
         encoded_x = encode_observation(ob_space, encoded_x)
 
         with tf.variable_scope('pi', reuse=tf.AUTO_REUSE):
-            policy_latent = policy_network(encoded_x)
-            if isinstance(policy_latent, tuple):
-                policy_latent, recurrent_tensors = policy_latent
+            network_output = policy_network(encoded_x)
 
-                if recurrent_tensors is not None:
-                    # recurrent architecture, need a few more steps
-                    nenv = nbatch // nsteps
-                    assert nenv > 0, 'Bad input for recurrent policy: batch size {} smaller than nsteps {}'.format(nbatch, nsteps)
-                    policy_latent, recurrent_tensors = policy_network(encoded_x, nenv)
-                    extra_tensors.update(recurrent_tensors)
+            if network_output.recurrent_tensors is not None:
+                # recurrent architecture, need a few more steps
+                nenv = nbatch // nsteps
+                assert nenv > 0, 'Bad input for recurrent policy: batch size {} smaller than nsteps {}'.format(nbatch, nsteps)
+                network_output = policy_network(encoded_x, nenv)
+                extra_tensors.update(network_output.recurrent_tensors)
 
 
         _v_net = value_network
 
         if _v_net is None or _v_net == 'shared':
-            vf_latent = policy_latent
+            vf_latent = network_output.policy_latent
         else:
             if _v_net == 'copy':
                 _v_net = policy_network
@@ -168,10 +168,11 @@ def build_policy(env, policy_network, value_network=None,  normalize_observation
         policy = PolicyWithValue(
             env=env,
             observations=X,
-            latent=policy_latent,
+            latent=network_output.policy_latent,
             vf_latent=vf_latent,
             sess=sess,
             estimate_q=estimate_q,
+            extra=network_output.extra,
             **extra_tensors
         )
         return policy
