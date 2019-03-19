@@ -31,7 +31,7 @@ class Model(object):
         with tf.variable_scope('ppo2_model', reuse=tf.AUTO_REUSE):
             # CREATE OUR TWO MODELS
             # act_model that is used for sampling
-            act_model = policy(nbatch_act, 1, sess)
+            act_model = policy(nbatch=None, nsteps=1, sess=sess)
 
             # Train model for training
             if microbatch_size is None:
