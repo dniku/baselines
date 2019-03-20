@@ -183,7 +183,8 @@ def make_output_format(format, ev_dir, log_suffix=''):
     elif format == 'csv':
         return CSVOutputFormat(osp.join(ev_dir, 'progress%s.csv' % log_suffix))
     elif format == 'tensorboard':
-        return TensorBoardOutputFormat(osp.join(ev_dir, 'tb%s' % log_suffix))
+        tb_dir = os.getenv('TENSORBOARD_DIR', osp.join(ev_dir, 'tb%s' % log_suffix))
+        return TensorBoardOutputFormat(tb_dir)
     else:
         raise ValueError('Unknown format specified: %s' % (format,))
 
