@@ -3,7 +3,7 @@ from baselines.common import tf_util
 from baselines.a2c.utils import fc
 from baselines.common.distributions import make_pdtype
 from baselines.common.input import observation_placeholder, encode_observation
-from baselines.common.tf_util import adjust_shape
+from baselines.common.tf_util import adjust_shape, get_session
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 from baselines.common.models import get_network_builder
 
@@ -53,7 +53,7 @@ class PolicyWithValue(object):
 
         # Calculate the neg log of our probability
         self.neglogp = self.pd.neglogp(self.action)
-        self.sess = sess or tf.get_default_session()
+        self.sess = sess or get_session()
 
         if estimate_q:
             assert isinstance(env.action_space, gym.spaces.Discrete)
