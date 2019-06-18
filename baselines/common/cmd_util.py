@@ -23,7 +23,9 @@ def make_vec_env(env_id, env_type, num_env, seed,
                  start_index=0,
                  reward_scale=1.0,
                  flatten_dict_observations=True,
-                 gamestate=None):
+                 gamestate=None,
+                 max_episode_steps=None,
+                 override_num_noops=None):
     """
     Create a wrapped, monitored SubprocVecEnv for Atari and MuJoCo.
     """
@@ -42,7 +44,9 @@ def make_vec_env(env_id, env_type, num_env, seed,
             gamestate=gamestate,
             flatten_dict_observations=flatten_dict_observations,
             wrapper_kwargs=wrapper_kwargs,
-            logger_dir=logger_dir
+            logger_dir=logger_dir,
+            max_episode_steps=max_episode_steps,
+            override_num_noops=override_num_noops,
         )
 
     set_global_seeds(seed)
@@ -52,10 +56,12 @@ def make_vec_env(env_id, env_type, num_env, seed,
         return DummyVecEnv([make_thunk(start_index)])
 
 
-def make_env(env_id, env_type, mpi_rank=0, subrank=0, seed=None, reward_scale=1.0, gamestate=None, flatten_dict_observations=True, wrapper_kwargs=None, logger_dir=None):
+def make_env(env_id, env_type, mpi_rank=0, subrank=0, seed=None, reward_scale=1.0, gamestate=None,
+             flatten_dict_observations=True, wrapper_kwargs=None, logger_dir=None, max_episode_steps=None,
+             override_num_noops=None):
     wrapper_kwargs = wrapper_kwargs or {}
     if env_type == 'atari':
-        env = make_atari(env_id)
+        env = make_atari(env_id, max_episode_steps, override_num_noops)
     elif env_type == 'retro':
         import retro
         gamestate = gamestate or retro.State.DEFAULT

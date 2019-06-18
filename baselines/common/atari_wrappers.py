@@ -10,25 +10,24 @@ from .wrappers import TimeLimit
 
 
 class NoopResetEnv(gym.Wrapper):
-    def __init__(self, env, noop_max=30):
+    def __init__(self, env, noop_max=30, override_num_noops=None):
         """Sample initial states by taking random number of no-ops on reset.
         No-op is assumed to be action 0.
         """
         gym.Wrapper.__init__(self, env)
         self.noop_max = noop_max
-        self.override_num_noops = None
+        self.override_num_noops = override_num_noops
         self.noop_action = 0
         assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
 
     def reset(self, **kwargs):
         """ Do no-op action for a number of steps in [1, noop_max]."""
-        self.env.reset(**kwargs)
+        obs = self.env.reset(**kwargs)
         if self.override_num_noops is not None:
             noops = self.override_num_noops
         else:
             noops = self.unwrapped.np_random.randint(1, self.noop_max + 1) #pylint: disable=E1101
-        assert noops > 0
-        obs = None
+        assert noops >= 0
         for _ in range(noops):
             obs, _, done, _ = self.env.step(self.noop_action)
             if done:
@@ -223,10 +222,10 @@ class LazyFrames(object):
     def __getitem__(self, i):
         return self._force()[i]
 
-def make_atari(env_id, max_episode_steps=None):
+def make_atari(env_id, max_episode_steps=None, override_num_noops=None):
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
-    env = NoopResetEnv(env, noop_max=30)
+    env = NoopResetEnv(env, noop_max=30, override_num_noops=override_num_noops)
     env = MaxAndSkipEnv(env, skip=4)
     if max_episode_steps is not None:
         env = TimeLimit(env, max_episode_steps=max_episode_steps)
